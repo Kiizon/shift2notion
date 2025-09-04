@@ -7,7 +7,7 @@ name = "Kish"
 
 def find_name(file_path):
     """
-    
+    Find the name in the Excel file and return the row number
     """
     try:
         df = pd.read_excel(file_path, header=None)
@@ -15,7 +15,8 @@ def find_name(file_path):
         for idx, value in enumerate(df.iloc[:, 1]):
             if value == name:
                 print(f"Row {idx}: {value}")
-        return df.iloc[:, 1]
+                for idx2, value2 in enumerate(df.iloc[idx, 2:16]):
+                    print(f"Column {idx2}: {value2}")
         
     except Exception as e:
         print(f"Error reading Excel file: {e}")
