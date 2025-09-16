@@ -1,10 +1,19 @@
 import pandas as pd
+import os.path
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from datetime import datetime, timedelta
 
+
+SCOPES = ["https://www.googleapis.com/auth/calendar"] # read and write access
 name = "Kish"
 days_of_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
-def get_shifts(file_path) -> list:
+
+def get_shifts(file_path: str) -> list:
     """
     Find the name in the Excel file and return the row number
     """
@@ -25,7 +34,6 @@ def get_shifts(file_path) -> list:
                         shifts.append(f"{day} {am_shift}")
                     if pd.notna(pm_shift):
                         shifts.append(f"{day} {pm_shift}")
-        print(shifts)
         formatted_shifts = parse_shifts(shifts)
         return formatted_shifts
     
@@ -33,21 +41,7 @@ def get_shifts(file_path) -> list:
         print(f"Error reading Excel file: {e}")
         return None
 
-# def parse_shifts(shifts):
-#     """
-#     Accepts a string of shifts and returns the start and end times
-
-#     tuesday PM: 6-CL -> (18:00, 23:59)
-#     wednesday PM: 5-CL -> (17:00, 23:59)
-#     thursday PM: 6-CL -> (18:00, 23:59)
-
-#     """
-#     if not shifts or pd.isna(shifts):
-#         return None, None
-#     shifts = str(shifts).split() 
-#     print(shifts)
-
-def parse_shifts(shifts):
+def parse_shifts(shifts: list) -> list[tuple[str, str, str]]:
     """
     Accepts a string of shifts and returns the start and end times
 
@@ -80,6 +74,8 @@ def build_events(formatted_shifts):
     """
     Builds events from the formatted shifts
     """
+
+    events = []
     for shift in formatted_shifts:
         day, start, end = shift
 
@@ -97,13 +93,15 @@ def build_events(formatted_shifts):
             "description": "Work Shift",
             "colorId": 1,
             "start": {
-                "dateTime": start_dt
+                "dateTime": start_dt + "-04:00"
             },
             "end": {
-                "dateTime": end_dt
+                "dateTime": end_dt + "-04:00"
             }
         }
-        print(event)
+        events.append(event)
+    return events
+    
 
 def get_actual_date(base_date, day):
     """
@@ -125,8 +123,37 @@ def get_actual_date(base_date, day):
     return base_date + timedelta(days=days_ahead)
 
 
+def main():
+    creds = None
+
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json", SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open("token.json", "w") as token:
+            token.write(creds.to_json())
+
+    try:
+        service = build("calendar", "v3", credentials=creds)
+        events = build_events(get_shifts("pm test.xls"))
+        for event in events:
+            event = service.events().insert(calendarId="primary", body=event).execute()
+            print("Event created: ", event.get("htmlLink"))
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+
+  
+print(build_events(get_shifts("pm test.xls")))
 
 
 if __name__ == "__main__":
     file_path = "pm test.xls"
     build_events(get_shifts(file_path))
+    main()
