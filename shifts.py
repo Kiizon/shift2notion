@@ -1,4 +1,5 @@
 import pandas as pd
+from datetime import datetime, timedelta
 
 name = "Kish"
 days_of_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -80,19 +81,48 @@ def build_events(formatted_shifts):
     Builds events from the formatted shifts
     """
     for shift in formatted_shifts:
-        day, start_time, end_time = shift
+        day, start, end = shift
+
+        base_date = datetime.now()
+
+        shift_date = get_actual_date(base_date,day) # get the actual date of the shift
+
+        start_time = datetime.strptime(start, "%H:%M").time()
+        end_time = datetime.strptime(end, "%H:%M").time()
+
+        start_dt = datetime.combine(shift_date.date(), start_time).isoformat()
+        end_dt = datetime.combine(shift_date.date(), end_time).isoformat()
         event = {
             "summary": "Work Shift",
             "description": "Work Shift",
             "colorId": 1,
             "start": {
-                "dateTime": start_time
+                "dateTime": start_dt
             },
             "end": {
-                "dateTime": end_time
+                "dateTime": end_dt
             }
         }
         print(event)
+
+def get_actual_date(base_date, day):
+    """
+    Get the actual date of the shift
+    """
+    days_of_week = {
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6
+    }
+    target = days_of_week[day.lower()]
+    base_weekday = base_date.weekday()
+    # Find offset to next occurrence
+    days_ahead = (target - base_weekday) % 7
+    return base_date + timedelta(days=days_ahead)
 
 
 
