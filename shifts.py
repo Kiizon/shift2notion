@@ -70,7 +70,7 @@ def parse_shifts(shifts):
     
         if "-CL" in shift_time:
             start_hour = int(shift_time.split("-CL")[0])
-            start_time = f"{start_hour}:00"
+            start_time = f"{start_hour + 12}:00"
             end_time = "23:59"
             formatted_shifts.append((day,start_time,end_time))
 
