@@ -144,13 +144,12 @@ def main():
         events = build_events(get_shifts("pm test.xls"))
         for event in events:
             event = service.events().insert(calendarId="primary", body=event).execute()
+            print("--------------------------------Adding event to calendar--------------------------------")
             print("Event created: ", event.get("htmlLink"))
 
     except HttpError as error:
         print(f"An error occurred: {error}")
 
-  
-print(build_events(get_shifts("pm test.xls")))
 
 
 if __name__ == "__main__":

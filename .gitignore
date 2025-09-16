@@ -3,3 +3,4 @@ credentials.json
 schedule.xls
 token.json
 pm test.xls
+__pycache__/
