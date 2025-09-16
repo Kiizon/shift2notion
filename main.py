@@ -32,6 +32,7 @@ def main():
   try:
     service = build("calendar", "v3", credentials=creds)
 
+
     event = {
         "summary": "Work Shift",
         "description": "Work Shift",
@@ -70,9 +71,9 @@ def build_events(file_path):
                     pm_shift = df.iloc[idx, pm_col_idx]  # PM shift value
                     
                     if pd.notna(am_shift):
-                        print(f"{day} AM: {am_shift}")
+                        print(f"{day}{am_shift}")
                     if pd.notna(pm_shift):
-                        print(f"{day} PM: {pm_shift}")
+                        print(f"{day} {pm_shift}")
     
     except Exception as e:
         print(f"Error reading Excel file: {e}")

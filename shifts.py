@@ -21,9 +21,9 @@ def build_events(file_path):
                     pm_shift = df.iloc[idx, pm_col_idx]  # PM shift value
                     
                     if pd.notna(am_shift):
-                        shifts.append(f"{day} AM: {am_shift}")
+                        shifts.append(f"{day} {am_shift}")
                     if pd.notna(pm_shift):
-                        shifts.append(f"{day} PM: {pm_shift}")
+                        shifts.append(f"{day} {pm_shift}")
         print(shifts)
         formatted_shifts = parse_shifts(shifts)
         print(formatted_shifts)
@@ -50,11 +50,14 @@ def parse_shifts(shifts):
     """
     Accepts a string of shifts and returns the start and end times
 
-    tuesday PM: 6-CL -> (18:00, 23:59)
-    wednesday PM: 5-CL -> (17:00, 23:59)
-    thursday PM: 6-CL -> (18:00, 23:59)
+    ['tuesday 6-CL', 'wednesday 5-CL', 'thursday 6-CL']
+
+    tuesday 6-CL -> (tuesday,18:00, 23:59)
+    wednesday 5-CL -> (wednesday,17:00, 23:59)
+    thursday 6-CL -> (thursday,18:00, 23:59)
 
     """
+    formatted_shifts = []
     if not shifts:
         print("No shifts found")
         return None, None
@@ -62,14 +65,14 @@ def parse_shifts(shifts):
 
     # Split by colon to separate day/type from shift time
     for shift in shifts:
-        parts = shift.split(':')
+        parts = shift.split()
         if len(parts) != 2:
             return None, None
     
-        day_type = parts[0].strip()  # "tuesday PM"
+        day = parts[0].strip()  # "tuesday"
         shift_time = parts[1].strip()  # "6-CL"
         
-        print(f"Day/Type: {day_type}")
+        print(f"Day: {day}")
         print(f"Shift Time: {shift_time}")
     
     # Parse the shift time (6-CL, 5-CL, etc.)
@@ -79,7 +82,8 @@ def parse_shifts(shifts):
             end_time = "23:59"
             print(f"Start Time: {start_time}")
             print(f"End Time: {end_time}")
-    
+            formatted_shifts.append((day,start_time,end_time))
+    print(formatted_shifts)
     return None, None
 
 if __name__ == "__main__":
