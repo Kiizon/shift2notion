@@ -3,7 +3,7 @@ import pandas as pd
 name = "Kish"
 days_of_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
-def build_events(file_path):
+def get_shifts(file_path) -> list:
     """
     Find the name in the Excel file and return the row number
     """
@@ -26,7 +26,7 @@ def build_events(file_path):
                         shifts.append(f"{day} {pm_shift}")
         print(shifts)
         formatted_shifts = parse_shifts(shifts)
-        print(formatted_shifts)
+        return formatted_shifts
     
     except Exception as e:
         print(f"Error reading Excel file: {e}")
@@ -52,10 +52,6 @@ def parse_shifts(shifts):
 
     ['tuesday 6-CL', 'wednesday 5-CL', 'thursday 6-CL']
 
-    tuesday 6-CL -> (tuesday,18:00, 23:59)
-    wednesday 5-CL -> (wednesday,17:00, 23:59)
-    thursday 6-CL -> (thursday,18:00, 23:59)
-
     """
     formatted_shifts = []
     if not shifts:
@@ -63,7 +59,6 @@ def parse_shifts(shifts):
         return None, None
     
 
-    # Split by colon to separate day/type from shift time
     for shift in shifts:
         parts = shift.split()
         if len(parts) != 2:
@@ -71,22 +66,37 @@ def parse_shifts(shifts):
     
         day = parts[0].strip()  # "tuesday"
         shift_time = parts[1].strip()  # "6-CL"
-        
-        print(f"Day: {day}")
-        print(f"Shift Time: {shift_time}")
     
-    # Parse the shift time (6-CL, 5-CL, etc.)
         if "-CL" in shift_time:
             start_hour = int(shift_time.split("-CL")[0])
             start_time = f"{start_hour}:00"
             end_time = "23:59"
-            print(f"Start Time: {start_time}")
-            print(f"End Time: {end_time}")
             formatted_shifts.append((day,start_time,end_time))
-    print(formatted_shifts)
-    return None, None
+
+    return formatted_shifts
+
+def build_events(formatted_shifts):
+    """
+    Builds events from the formatted shifts
+    """
+    for shift in formatted_shifts:
+        day, start_time, end_time = shift
+        event = {
+            "summary": "Work Shift",
+            "description": "Work Shift",
+            "colorId": 1,
+            "start": {
+                "dateTime": start_time
+            },
+            "end": {
+                "dateTime": end_time
+            }
+        }
+        print(event)
+
+
+
 
 if __name__ == "__main__":
     file_path = "pm test.xls"
-    build_events(file_path)
-    parse_shifts("tuesday PM: 6-CL")
+    build_events(get_shifts(file_path))
