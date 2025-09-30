@@ -20,7 +20,7 @@ Automatically fetches work schedules from Gmail and adds them to Google Calendar
    Edit `main.py`:
    ```python
    name = "Your Name"  # Line 17
-   employer_email = "your.employer@company.com"  # Line 218
+   employer_email = "your.employer@company.com"  # Line 217
    ```
 
 4. **Run:**
