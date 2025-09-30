@@ -1,5 +1,6 @@
 import pandas as pd
 import os.path
+import os, base64, re
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,11 +9,74 @@ from googleapiclient.errors import HttpError
 from datetime import datetime, timedelta
 
 
-SCOPES = ["https://www.googleapis.com/auth/calendar"] # read and write access
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/calendar"
+]
+# CONFIGURATION: Change this to your name as it appears in the Excel schedule
 name = "Kish"
 days_of_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
+def build_gmail(creds):
+    """
+    Builds the Gmail service
+    """
+    return build("gmail", "v1", credentials=creds)
 
+def gmail_search_ids(gmail, query, max_results=10):
+    resp = gmail.users().messages().list(userId="me", q=query, maxResults=max_results).execute()
+    return [m["id"] for m in resp.get("messages", [])]
+
+def _iter_parts(payload):
+    if not payload:
+        return
+    if payload.get("parts"):
+        for p in payload["parts"]:
+            yield from _iter_parts(p)
+    else:
+        yield payload
+def gmail_download_first_excel(gmail, query, save_dir="./downloads"):
+    """
+    Returns the saved file path (str) or None if not found.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    ids = gmail_search_ids(gmail, query, max_results=20)
+    for mid in ids or []:
+        msg = gmail.users().messages().get(userId="me", id=mid, format="full").execute()
+        payload = msg.get("payload", {})
+
+        headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
+        sender = headers.get("from", "")
+
+        for part in _iter_parts(payload):
+            filename = part.get("filename") or ""
+            if not filename:
+                continue
+            if not re.search(r"\.(xlsx|xls)$", filename, re.I):
+                continue
+
+            body = part.get("body", {})
+            data = body.get("data")
+            attachment_id = body.get("attachmentId")
+
+            if data: 
+                raw = base64.urlsafe_b64decode(data)
+            elif attachment_id:
+                att = gmail.users().messages().attachments().get(
+                    userId="me", messageId=mid, id=attachment_id
+                ).execute()
+                raw = base64.urlsafe_b64decode(att["data"])
+            else:
+                continue
+
+            # safe filename + timestamp
+            base, ext = os.path.splitext(filename)
+            safe = "".join(c for c in base if c.isalnum() or c in ("-","_"))[:80]
+            out_path = os.path.join(save_dir, f"{safe}{ext}")
+            with open(out_path, "wb") as f:
+                f.write(raw)
+            return out_path
+    return None
 def get_shifts(file_path: str) -> list:
     """
     Find the name in the Excel file and return the row number
@@ -45,7 +109,7 @@ def parse_shifts(shifts: list) -> list[tuple[str, str, str]]:
     """
     Accepts a string of shifts and returns the start and end times
 
-    ['tuesday 6-CL', 'wednesday 5-CL', 'thursday 6-CL']
+    ['tuesday 6-CL', 'wednesday 5:30-CL', 'thursday 6-CL']
 
     """
     formatted_shifts = []
@@ -60,13 +124,19 @@ def parse_shifts(shifts: list) -> list[tuple[str, str, str]]:
             return None, None
     
         day = parts[0].strip()  # "tuesday"
-        shift_time = parts[1].strip()  # "6-CL"
+        shift_time = parts[1].strip()  # "6-CL" or "5:30-CL"
     
         if "-CL" in shift_time:
-            start_hour = int(shift_time.split("-CL")[0])
-            start_time = f"{start_hour + 12}:00"
-            end_time = "23:59"
-            formatted_shifts.append((day,start_time,end_time))
+            # Extract the time part before "-CL"
+            time_part = shift_time.split("-CL")[0]
+            
+            # Handle format like "5:30" - convert to 24-hour format
+            if ":" in time_part:
+                hour, minute = time_part.split(":")
+                hour_24 = int(hour) + 12  # Convert to 24-hour format (assuming PM)
+                start_time = f"{hour_24}:{minute}"
+                end_time = "23:59"
+                formatted_shifts.append((day, start_time, end_time))
 
     return formatted_shifts
 
@@ -140,10 +210,19 @@ def main():
             token.write(creds.to_json())
 
     try:
-        service = build("calendar", "v3", credentials=creds)
-        events = build_events(get_shifts("pm test.xls"))
+        gmail = build_gmail(creds)
+        calendar = build("calendar", "v3", credentials=creds)
+
+        # CONFIGURATION: Change this to your employer's email address
+        employer_email = "your.employer@company.com"
+        query = f'from:{employer_email} newer_than:6d (filename:xls OR filename:xlsx)'
+
+
+        file_path = gmail_download_first_excel(gmail, query, save_dir="./downloads")
+        print(file_path)
+        events = build_events(get_shifts(file_path))
         for event in events:
-            event = service.events().insert(calendarId="primary", body=event).execute()
+            event = calendar.events().insert(calendarId="primary", body=event).execute()
             print("--------------------------------Adding event to calendar--------------------------------")
             print("Event created: ", event.get("htmlLink"))
 
