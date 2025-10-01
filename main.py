@@ -242,14 +242,15 @@ def main():
             print("--------------------------------Adding event to calendar--------------------------------")
             print("Event created: ", event.get("htmlLink"))
         
-        # Clean up downloaded files after processing
+        print("--------------------------------Cleaning up downloads--------------------------------")
         cleanup_downloads()
 
     except HttpError as error:
         print(f"An error occurred: {error}")
-        # Clean up even if there was an error
         cleanup_downloads()
-
+    except Exception as error:
+        print(f"Unexpected error: {error}")
+        cleanup_downloads()
 
 
 if __name__ == "__main__":
