@@ -217,8 +217,16 @@ def main():
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                print("Refreshing expired token...")
+                creds.refresh(Request())
+                print("Token refreshed successfully!")
+            except Exception as e:
+                print(f"Failed to refresh token: {e}")
+                print("Need to re-authenticate. Please run script manually.")
+                return
         else:
+            print("No valid token found. Starting OAuth flow...")
             flow = InstalledAppFlow.from_client_secrets_file(
                 "credentials.json", SCOPES)
             creds = flow.run_local_server(port=0)
