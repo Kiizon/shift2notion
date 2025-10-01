@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import pandas as pd
 import os.path
 import os, base64, re
@@ -192,6 +193,21 @@ def get_actual_date(base_date, day):
     days_ahead = (target - base_weekday) % 7
     return base_date + timedelta(days=days_ahead)
 
+def cleanup_downloads():
+    """
+    Clean up downloaded Excel files from the downloads directory
+    """
+    downloads_dir = "./downloads"
+    if os.path.exists(downloads_dir):
+        for filename in os.listdir(downloads_dir):
+            if filename.endswith(('.xls', '.xlsx')):
+                file_path = os.path.join(downloads_dir, filename)
+                try:
+                    os.remove(file_path)
+                    print(f"Cleaned up: {filename}")
+                except OSError as e:
+                    print(f"Error deleting {filename}: {e}")
+
 
 def main():
     creds = None
@@ -225,9 +241,14 @@ def main():
             event = calendar.events().insert(calendarId="primary", body=event).execute()
             print("--------------------------------Adding event to calendar--------------------------------")
             print("Event created: ", event.get("htmlLink"))
+        
+        # Clean up downloaded files after processing
+        cleanup_downloads()
 
     except HttpError as error:
         print(f"An error occurred: {error}")
+        # Clean up even if there was an error
+        cleanup_downloads()
 
 
 
