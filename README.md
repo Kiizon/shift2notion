@@ -28,6 +28,13 @@ Automatically fetches work schedules from Gmail and adds them to Google Calendar
    python3 main.py
    ```
 
+5. **Optional - Set up automation:**
+   ```bash
+   crontab -e
+   # Add: 0 22 * * 7 /path/to/your/project/run_schedule.sh
+   # run pwd in terminal to get path to run_schedule.sh
+   ```
+
 ## What It Does
 
 - Searches Gmail for Excel schedules from your employer
